@@ -1,0 +1,188 @@
+---
+title: "![](long_logo copy.png){width=4.5in}"
+author: "Guadalupe Torres^[**Email** gtorressanchez01@hamline.edu. **Position** Student]"
+date: "02/23/2025"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+Advanced Data Analytics: Assignment 2- Logistic Regression
+fontsize: 12pt
+---
+<!-- 
+-->
+
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+-->
+> The purpose of this document is to simulataneously analyze admission data. I am interested in how variables such graduate record exam scores, GPA, and prestige of the undergraduate institution, affect admission into graduate school. 
+
+## Exploratory Data Analysis
+
+```{r include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(caTools)
+
+admit <-read_csv(file = "admit.csv")
+summary(admit)
+
+
+```
+```{r include=TRUE}
+view(admit)
+print(str(admit))
+
+```
+```{r include=TRUE}
+
+sum(is.na(admit))
+
+```
+
+```{r include=TRUE}
+
+x <- c(1, 1, 4, 5, 4, 6)
+duplicated(x)
+x[duplicated(x)]
+```
+
+
+--> 
+The data set has 400 observations with 4 columns, the column categories consist of `admit`, `gre`, `gpa`, and `rank`. We can see that all the variables are numeric data types, r represents these variables as col_double. The dataset contains 0 missing values. To check for duplicates the code will return true if there are no duplicates and false if there is. We can see that in this case there are duplicate values in the dataset. 
+
+## 1. Checking for balanced classes in the dataset
+
+```{r include=TRUE}
+table(admit$admit)
+
+class_proportions <- prop.table(table(admit$admit))
+class_proportions
+
+```
+--> 
+To determine if the admit and don't admit classes are balanced in the dataset, we need to check if the number of data points belonging to each class is roughly equal. In this case, one class has significalty more data points then the other making the dataset imbalanced. 
+
+
+## 2. Describing the distribution of GRE scores. 
+
+```{r include=TRUE}
+
+hist(admit$gre)
+
+```
+
+--> 
+Based on the Histogram the distribution of GRE scores is left skewed. 
+
+## Seperating data into training and testing sets.
+
+```{r include=TRUE}
+set.seed(1)
+
+```
+
+```{r include=TRUE}
+split <- sample.split(admit$admit, SplitRatio = 0.7)
+
+```
+
+```{r include=TRUE}
+train_data <- subset(admit, split == TRUE)
+test_data <- subset(admit, split == FALSE)
+
+```
+
+```{r include=TRUE}
+dim(train_data)
+dim(test_data)
+
+```
+
+
+## Fitting the Model
+
+```{r include=TRUE}
+
+log_model <- glm(admit ~ gre + gpa + rank, data = train_data, family = binomial)
+
+```
+
+```{r include=TRUE}
+summary(log_model)
+
+```
+--> 
+
+The variable gpa is significant in this case because of its high number. We know it is also significant because of is low p-value being less then 0.05.
+
+## Confusion Matrix
+
+```{r include=TRUE}
+
+pred_probs <- predict(log_model, test_data, type = "response")
+pred_probs
+```
+
+```{r include=TRUE}
+
+pred_classes <- ifelse(pred_probs > 0.5, 1, 0)
+```
+
+```{r include=TRUE}
+
+pred_classes <- as.factor(pred_classes)
+```
+
+```{r include=TRUE}
+head(pred_probs)
+head(pred_classes)
+
+
+```
+```{r include=TRUE}
+
+do.call(rbind, Map(data.frame, predicted_classes=pred_classes, admit=test_data$admit))
+
+```
+
+```{r include=TRUE}
+
+conf_matrix <- table(Predicted = pred_classes, Actual = test_data$admit)
+conf_matrix
+
+```
+```{r include=TRUE}
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+accuracy
+
+```
+
+```{r include=TRUE}
+
+print(conf_matrix)
+print(paste("Accuracy:", round(accuracy, 4)))
+
+```
+--> 
+The accurary of the model is 71%. 
+
+
+```{r include=TRUE}
+
+ggplot(test_data, aes(x = gpa, y = as.numeric(as.character(admit)), color = as.factor(pred_classes))) +
+  geom_point(size = 3) +
+  labs(title = "GPA vs Admit",
+       x = "GPA (gpa)",
+       y = "Admit (0 = admit, 1 = not admit)") +
+  scale_color_manual(values = c("red", "blue"), name = "Prediction")
+
+```
+
+--> 
+We can conclude that GPA is the most important for predicting admission status
